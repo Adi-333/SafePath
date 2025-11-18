@@ -1,11 +1,13 @@
 # model/views.py  (replace safe_route function with this)
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .utils.osrm_client import get_osrm_edges
+
 from .utils.crime_loader import load_crime_data
-from .utils.safety_graph import RoadGraph, haversine
 from .utils.crime_scoring import summarize_crime_for_segment
+from .utils.osrm_client import get_osrm_edges
 from .utils.safety_astar import safe_a_star
+from .utils.safety_graph import RoadGraph, haversine
+
 
 @api_view(["GET"])
 def safe_route(request):
@@ -27,7 +29,9 @@ def safe_route(request):
     crime_df = load_crime_data()
 
     # 2. Get road segments from OSRM
-    start_node, goal_node, edges = get_osrm_edges(start_lat, start_lon, end_lat, end_lon)
+    start_node, goal_node, edges = get_osrm_edges(
+        start_lat, start_lon, end_lat, end_lon
+    )
 
     # coords list for original route (OSRM returned coords in order)
     original_coords = []
@@ -46,9 +50,9 @@ def safe_route(request):
     segment_risks = []
     total_distance = 0.0
     for a, b in edges:
-        r = summarize_crime_for_segment(a, b, crime_df)
+        r, exp = summarize_crime_for_segment(a, b, crime_df)
         graph.set_risk(a, b, r)
-        segment_risks.append(r)
+        segment_risks.append({"segment": [a, b], "risk": r, "explation": exp})
         total_distance += haversine(a[0], a[1], b[0], b[1])
 
     # 5. Find safe route (list of nodes)
@@ -60,13 +64,14 @@ def safe_route(request):
     # some aggregate stats
     avg_risk = float(sum(segment_risks) / len(segment_risks)) if segment_risks else 0.0
 
-    return Response({
-        "original_route": original_coords,
-        "segment_risks": segment_risks,
-        "safe_path": safe_path,
-        "distance_meters": total_distance,
-        "avg_risk": avg_risk,
-        "nodes": len(graph.edges),
-        "segments": len(edges)
-    })
-
+    return Response(
+        {
+            "original_route": original_coords,
+            "segment_risks": segment_risks,
+            "safe_path": safe_path,
+            "distance_meters": total_distance,
+            "avg_risk": avg_risk,
+            "nodes": len(graph.edges),
+            "segments": len(edges),
+        }
+    )
