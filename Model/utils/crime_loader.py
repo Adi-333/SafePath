@@ -4,8 +4,12 @@ import os
 
 def load_crime_data():
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    csv_path = os.path.join(BASE_DIR, "data/delhi_crime_data.csv")
+    csv_path = os.path.join(BASE_DIR, "data", "delhi_crime_data.csv")
 
     df = pd.read_csv(csv_path)
+
+    # Normalize all column names to lowercase
+    df.columns = df.columns.str.lower()
+
     return df
 
